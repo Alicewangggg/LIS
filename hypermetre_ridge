@@ -1,0 +1,66 @@
+import joblib as jb
+import numpy as np
+import pandas as pd
+from pandas import DataFrame
+import csv
+import sklearn
+from sklearn.linear_model import LinearRegression, ElasticNet, Lars, LassoLars, Ridge
+from sklearn.model_selection import LeaveOneGroupOut, cross_val_score
+from sklearn import metrics
+from sklearn.model_selection import GridSearchCV
+import matplotlib as mpb
+mpb.use("Agg")
+import matplotlib.pyplot as plt
+
+
+X = jb.load('voicecalibrator_timeseries_temporal.jl')
+y = jb.load('localizer_searchlight_temporal.jl')
+
+X_sepe = []
+y_sepe = []
+X_sepe = np.split(X, 36, axis=0)
+y_sepe = np.split(y,36,axis=0)
+
+for i in range(36):
+    X_sepe[i] = X_sepe[i][0:1000]
+    y_sepe[i] = y_sepe[i][0:1000]
+
+newX = np.concatenate((X_sepe[0],X_sepe[1],X_sepe[2],X_sepe[3],X_sepe[4],X_sepe[5],X_sepe[6],X_sepe[7],X_sepe[8],X_sepe[9],X_sepe[10],X_sepe[11],X_sepe[12],X_sepe[13],X_sepe[14],X_sepe[15],X_sepe[16],X_sepe[17],X_sepe[18],X_sepe[19],X_sepe[20],X_sepe[21],X_sepe[22],X_sepe[23],X_sepe[24],X_sepe[25],X_sepe[26],X_sepe[27],X_sepe[28],X_sepe[29],X_sepe[30],X_sepe[31],X_sepe[32],X_sepe[33],X_sepe[34],X_sepe[35]))
+newy = np.concatenate((y_sepe[0],y_sepe[1],y_sepe[2],y_sepe[3],y_sepe[4],y_sepe[5],y_sepe[6],y_sepe[7],y_sepe[8],y_sepe[9],y_sepe[10],y_sepe[11],y_sepe[12],y_sepe[13],y_sepe[14],y_sepe[15],y_sepe[16],y_sepe[17],y_sepe[18],y_sepe[19],y_sepe[20],y_sepe[21],y_sepe[22],y_sepe[23],y_sepe[24],y_sepe[25],y_sepe[26],y_sepe[27],y_sepe[28],y_sepe[29],y_sepe[30],y_sepe[31],y_sepe[32],y_sepe[33],y_sepe[34],y_sepe[35]))
+
+dfy = DataFrame(newy)
+y = dfy.replace(0, np.NaN)
+y.fillna(y.mean(), inplace=True)
+y = np.array(y)
+ny = []
+for i in range(len(newy)):
+    ny.append(y[i])
+ny = np.array(ny)
+
+group = []
+for i in range(36):
+    for j in range(1000):
+        group.append(i)
+logo = LeaveOneGroupOut()
+ytests = []
+ypreds = []
+r2_list = []
+mse_error = []
+i = 0
+alphas = np.logspace(-10,0,20)
+for a in alphas:
+    print(i)
+    i += 1
+    for train_index, test_index in logo.split(newX, ny, group):
+        X_train, X_test = newX[train_index], newX[test_index]
+        y_train, y_test = ny[train_index], ny[test_index]
+
+        ytests += list(y_test)
+        clf = Ridge()
+        clf.set_params(alpha = a)
+        clf.fit(X=X_train, y=y_train)
+        y_pred = clf.predict(X_test)
+        ypreds += list(y_pred)
+    mse_error.append(metrics.mean_squared_error(ytests,ypreds))
+print("mse error",mse_error)
+
